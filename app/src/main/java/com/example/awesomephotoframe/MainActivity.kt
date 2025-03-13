@@ -1,47 +1,31 @@
 package com.example.awesomephotoframe
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.tv.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.Surface
-import com.example.awesomephotoframe.ui.theme.AwesomePhotoFrameTheme
+import android.widget.TextView
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import com.example.awesomephotoframe.viewmodel.WeatherViewModel
 
-class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalTvMaterial3Api::class)
+
+class MainActivity : AppCompatActivity() {
+    private val weatherViewModel: WeatherViewModel by viewModels()
+    private lateinit var tvWeather: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            AwesomePhotoFrameTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    shape = RectangleShape
-                ) {
-                    Greeting("Android")
-                }
+        setContentView(R.layout.activity_main)
+
+        tvWeather = findViewById(R.id.tv_weather)
+
+        // 天気情報をロード
+        weatherViewModel.loadWeather(35.6895, 139.6917)
+
+        // LiveData を監視 (observe)
+        weatherViewModel.weather.observe(this, Observer { weather ->
+            weather?.let {
+                tvWeather.text = "${it.temperature}°C, ${it.description}"
             }
-        }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AwesomePhotoFrameTheme {
-        Greeting("Android")
+        })
     }
 }

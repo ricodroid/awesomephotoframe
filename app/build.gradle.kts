@@ -67,4 +67,6 @@ dependencies {
 
     // AdMob (Google 広告 SDK)
     implementation("com.google.android.gms:play-services-ads:24.1.0")
+    implementation("com.squareup.picasso:picasso:2.8")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
 }

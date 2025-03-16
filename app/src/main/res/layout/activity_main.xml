@@ -5,14 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
-    android:background="@android:color/black">
+    android:background="@android:color/black"
+    android:padding="16dp">
 
-    <!-- 左側の時間・天気表示 -->
+    <!-- 左側の時間・天気・ユーザー情報 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:gravity="center_vertical">
 
         <TextView
             android:id="@+id/tv_time"
@@ -29,11 +30,43 @@
             android:text="Loading weather..."
             android:textSize="24sp"
             android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/tv_user"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Not signed in"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            android:paddingTop="8dp"/>
+
+        <ImageView
+            android:id="@+id/iv_photo"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:scaleType="centerCrop"
+            android:src="@android:drawable/sym_def_app_icon"
+            android:layout_marginTop="8dp"/>
+
+        <Button
+            android:id="@+id/sign_in_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sign In"
+            android:layout_marginTop="8dp"/>
+
+        <Button
+            android:id="@+id/sign_out_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sign Out"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
     <!-- 右側のフォトフレーム -->
     <ImageView
-        android:id="@+id/iv_photo"
+        android:id="@+id/iv_photo_frame"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
@@ -41,12 +74,12 @@
         android:src="@drawable/sample_photo"/>
 
     <!-- 広告バナー -->
-<!-- AdMob追加する必要あり  -->
-<!--    <com.google.android.gms.ads.AdView-->
-<!--        android:id="@+id/adView"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        ads:adSize="BANNER"-->
-<!--        ads:adUnitId="ca-app-pub-xxxxxxxxxxxxxxxx/banner_ad_unit_id"-->
-<!--        android:layout_gravity="bottom"/>-->
+    <!-- AdMob追加する必要あり -->
+    <!-- <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-xxxxxxxxxxxxxxxx/banner_ad_unit_id"
+        android:layout_gravity="bottom"/> -->
 </LinearLayout>

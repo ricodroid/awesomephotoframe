@@ -66,17 +66,17 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.retrofit)
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation(libs.converter.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.okhttp)
 
     // AdMob (Google 広告 SDK)
-    implementation("com.google.android.gms:play-services-ads:24.1.0")
-    implementation("com.squareup.picasso:picasso:2.8")
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation(libs.play.services.ads)
+    implementation(libs.picasso)
+    implementation(libs.play.services.auth)
 
 
-    implementation("com.google.api-client:google-api-client-android:1.33.0")
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.oauth.client.jetty)
 
 }

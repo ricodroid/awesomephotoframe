@@ -1,7 +1,6 @@
 package com.example.awesomephotoframe
 
 import android.content.Intent
-import android.media.browse.MediaBrowser.MediaItem
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -39,6 +38,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private lateinit var tvTime: TextView
     private lateinit var ivPhoto: ImageView
     private lateinit var ivPhotoFrame: ImageView
+    private val photoUpdateHandler = android.os.Handler()
+    private val photoUrls = mutableListOf<String>() // 取得した画像のURLリスト
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,7 +158,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 val url = URL("https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=10")
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
-                connection.setRequestProperty("Authorization", "Bearer $accessToken")  // 修正点
+                connection.setRequestProperty("Authorization", "Bearer $accessToken")
                 connection.setRequestProperty("Content-Type", "application/json")
 
                 val responseCode = connection.responseCode
@@ -174,16 +175,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     val mediaItems = jsonResponse.optJSONArray("mediaItems")
 
                     if (mediaItems != null && mediaItems.length() > 0) {
-                        val firstPhotoUrl = mediaItems.getJSONObject(0).getString("baseUrl")
-                        Log.d(TAG, "Google Photo URL: $firstPhotoUrl")
-
-                        runOnUiThread {
-                            Picasso.get()
-                                .load(firstPhotoUrl)
-                                .placeholder(android.R.drawable.sym_def_app_icon)
-                                .error(android.R.drawable.sym_def_app_icon)
-                                .into(ivPhotoFrame)  // Google Photos API で取得した画像を iv_photo_frame にセット
+                        photoUrls.clear() // リストをリセット
+                        for (i in 0 until mediaItems.length()) {
+                            val photoUrl = mediaItems.getJSONObject(i).getString("baseUrl")
+                            photoUrls.add(photoUrl) // 画像のURLをリストに追加
                         }
+                        Log.d(TAG, "Fetched ${photoUrls.size} photos")
+
+                        // すぐに1枚ランダムで表示
+                        runOnUiThread { updatePhotoFrame() }
+
+                        // 10分ごとに更新
+                        startPhotoUpdateLoop()
                     } else {
                         Log.e(TAG, "No media items found")
                     }
@@ -193,6 +196,40 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 connection.disconnect()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch Google Photos", e)
+            }
+        }
+    }
+
+    private val photoUpdateRunnable = object : Runnable {
+        override fun run() {
+            updatePhotoFrame()
+//            photoUpdateHandler.postDelayed(this, 10 * 60 * 1000) // 10分後に再実行
+            photoUpdateHandler.postDelayed(this, 10 * 60 * 100)
+        }
+    }
+
+    private fun startPhotoUpdateLoop() {
+        photoUpdateHandler.removeCallbacks(photoUpdateRunnable) // 既存のループをリセット
+        photoUpdateHandler.post(photoUpdateRunnable) // ループ開始
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        photoUpdateHandler.removeCallbacks(photoUpdateRunnable) // アプリ終了時に停止
+    }
+
+
+    private fun updatePhotoFrame() {
+        if (photoUrls.isNotEmpty()) {
+            val randomPhotoUrl = photoUrls.random() // ランダムに1枚選択
+            Log.d(TAG, "Displaying photo: $randomPhotoUrl")
+
+            runOnUiThread {
+                Picasso.get()
+                    .load(randomPhotoUrl)
+                    .placeholder(android.R.drawable.sym_def_app_icon)
+                    .error(android.R.drawable.sym_def_app_icon)
+                    .into(ivPhotoFrame)
             }
         }
     }

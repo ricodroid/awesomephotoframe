@@ -1,6 +1,5 @@
 package com.example.awesomephotoframe.data.api
 
-import com.example.awesomephotoframe.data.repository.WeatherApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 

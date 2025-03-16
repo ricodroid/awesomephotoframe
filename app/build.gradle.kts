@@ -36,6 +36,11 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 dependencies {
@@ -69,4 +74,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:24.1.0")
     implementation("com.squareup.picasso:picasso:2.8")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+
+
+    implementation("com.google.api-client:google-api-client-android:1.33.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
+
 }

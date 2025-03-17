@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
@@ -40,6 +41,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private lateinit var ivPhotoFrame: ImageView
     private val photoUpdateHandler = android.os.Handler()
     private val photoUrls = mutableListOf<String>() // 取得した画像のURLリスト
+
+    // ActivityResultLauncherの定義
+    private val activityResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            handleSignInResult(task)
+        } else {
+            Log.w(TAG, "Sign-in failed")
+            updateUI(null)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +94,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun signIn() {
         val signInIntent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, RC_SIGN_IN)
+        activityResultLauncher.launch(signInIntent) // 修正ポイント
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

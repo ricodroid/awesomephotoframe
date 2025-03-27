@@ -130,4 +130,7 @@ dependencies {
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
+
+    // 課金用
+    implementation("com.android.billingclient:billing-ktx:6.1.0")
 }

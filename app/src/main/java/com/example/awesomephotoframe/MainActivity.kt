@@ -1,5 +1,7 @@
 package com.example.awesomephotoframe
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -17,6 +19,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.BillingFlowParams
+import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryPurchasesParams
 import com.example.awesomephotoframe.data.repository.GooglePhotosApi
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -40,6 +48,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.bumptech.glide.Glide
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -63,6 +74,15 @@ class MainActivity : AppCompatActivity() {
         tvDate = findViewById(R.id.tv_date)
         tvTime = findViewById(R.id.tv_time)
 
+        MobileAds.initialize(this) {}
+
+        val adView = findViewById<AdView>(R.id.adView)
+        val adRequest = AdRequest.Builder().build()
+        adView.loadAd(adRequest)
+
+        checkPremiumStatus(this) { isPremium ->
+            if (isPremium) showPremiumUI() else showFreeUI()
+        }
 
         // Google Sign-In 設定
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -72,6 +92,18 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        val billingManager = BillingManager(this)
+        billingManager.startConnection {
+            billingManager.queryPurchases { isPremium ->
+                if (isPremium) {
+                    showPremiumUI()
+                } else {
+                    showFreeUI()
+                }
+            }
+        }
+
 
         updateDateTime() // 初期表示
         startClockUpdater() // 毎分更新（必要なら）
@@ -374,5 +406,85 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
+    private fun showPremiumUI() {
+        // 広告非表示 + 有料機能を有効に
+        findViewById<View>(R.id.adView)?.visibility = View.GONE
+    }
+
+    private fun showFreeUI() {
+        // 広告表示
+        findViewById<View>(R.id.adView)?.visibility = View.VISIBLE
+    }
+
+    fun checkPremiumStatus(context: Context, onResult: (Boolean) -> Unit) {
+        val billingClient = BillingClient.newBuilder(context)
+            .setListener { _, _ -> }
+            .enablePendingPurchases()
+            .build()
+
+        billingClient.startConnection(object : BillingClientStateListener {
+            override fun onBillingSetupFinished(billingResult: BillingResult) {
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                    billingClient.queryPurchasesAsync(
+                        QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
+                    ) { billingResult, purchasesList ->
+                        val hasPremium = purchasesList.any { it.products.contains("premium_upgrade") }
+                        onResult(hasPremium)
+                    }
+                }
+            }
+
+            override fun onBillingServiceDisconnected() {
+                onResult(false)
+            }
+        })
+    }
+
+
+    // 有料にアップデートする
+    fun launchPurchaseFlow(activity: Activity) {
+        val billingClient = BillingClient.newBuilder(activity)
+            .setListener { billingResult, purchases ->
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && !purchases.isNullOrEmpty()) {
+                    showPremiumUI()
+                }
+            }
+            .enablePendingPurchases()
+            .build()
+
+        billingClient.startConnection(object : BillingClientStateListener {
+            override fun onBillingSetupFinished(billingResult: BillingResult) {
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                    val productDetailsParams = QueryProductDetailsParams.Product.newBuilder()
+                        .setProductId("premium_upgrade")
+                        .setProductType(BillingClient.ProductType.INAPP)
+                        .build()
+
+                    billingClient.queryProductDetailsAsync(
+                        QueryProductDetailsParams.newBuilder().setProductList(listOf(productDetailsParams)).build()
+                    ) { _, productDetailsList ->
+                        val productDetails = productDetailsList.firstOrNull()
+                        if (productDetails != null) {
+                            val billingFlowParams = BillingFlowParams.newBuilder()
+                                .setProductDetailsParamsList(
+                                    listOf(
+                                        BillingFlowParams.ProductDetailsParams.newBuilder()
+                                            .setProductDetails(productDetails)
+                                            .build()
+                                    )
+                                )
+                                .build()
+                            billingClient.launchBillingFlow(activity, billingFlowParams)
+                        }
+                    }
+                }
+            }
+
+            override fun onBillingServiceDisconnected() {}
+        })
+    }
+
+
 
 }

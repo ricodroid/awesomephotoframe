@@ -1,0 +1,24 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_user_info"
+        android:title="Not signed in"
+        android:enabled="false"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sign_in"
+        android:title="Sign In"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sign_out"
+        android:title="Sign Out"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_show_user"
+        android:title="User Info"
+        app:showAsAction="never" />
+</menu>

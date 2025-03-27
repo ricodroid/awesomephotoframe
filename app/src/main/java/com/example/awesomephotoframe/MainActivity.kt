@@ -25,7 +25,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
-import com.squareup.picasso.Picasso
 import com.squareup.picasso.Transformation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +39,7 @@ import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-
+import com.bumptech.glide.Glide
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -152,7 +151,9 @@ class MainActivity : AppCompatActivity() {
 
             // PicassoやGlideで画像を読み込む
             if (imageUrl != null) {
-                Picasso.get().load(imageUrl).into(ivUserIcon)
+                Glide.with(this@MainActivity)
+                    .load(imageUrl)
+                    .into(ivPhotoFrame)
             }
 
             AlertDialog.Builder(this)
@@ -285,11 +286,11 @@ class MainActivity : AppCompatActivity() {
                 val imageUrl = mediaItems.random().baseUrl + "=w1024-h768"
 
                 withContext(Dispatchers.Main) {
-                    Picasso.get()
+                    Glide.with(this@MainActivity)
                         .load(imageUrl)
-                        .transform(RotateIfPortraitTransformation())
                         .into(ivPhotoFrame)
                 }
+
             }
         } catch (e: Exception) {
             Log.e("PhotosAPI", "Failed to fetch photos", e)

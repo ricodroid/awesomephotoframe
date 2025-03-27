@@ -1,6 +1,8 @@
 package com.example.awesomephotoframe
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +26,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import com.squareup.picasso.Picasso
+import com.squareup.picasso.Transformation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,9 +77,35 @@ class MainActivity : AppCompatActivity() {
         updateDateTime() // 初期表示
         startClockUpdater() // 毎分更新（必要なら）
 
-        // ログイン状態確認
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        updateUI(account)
+        // ログイン状態確認（silentSignIn を使って authCode を再取得）
+        googleSignInClient.silentSignIn().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val account = task.result
+                updateUI(account)
+
+                val authCode = account?.serverAuthCode
+                if (authCode != null) {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val accessToken = exchangeAuthCodeForAccessToken(
+                            authCode,
+                            BuildConfig.GOOGLE_CLIENT_ID,
+                            BuildConfig.GOOGLE_CLIENT_SECRET
+                        )
+                        if (accessToken != null) {
+                            fetchPhotosWithAccessToken(accessToken)
+                            startPhotoUpdater(accessToken)
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "Silent sign-in succeeded, but serverAuthCode is null")
+                }
+            } else {
+                Log.w(TAG, "Silent sign-in failed", task.exception)
+                updateUI(null)
+            }
+        }
+
+
 
         val btnMenu = findViewById<ImageButton>(R.id.btn_menu)
         btnMenu.setOnClickListener { view ->
@@ -181,6 +210,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (accessToken != null) {
                         fetchPhotosWithAccessToken(accessToken)
+                        startPhotoUpdater(accessToken)
                     }
                 }
             }
@@ -255,7 +285,10 @@ class MainActivity : AppCompatActivity() {
                 val imageUrl = mediaItems.random().baseUrl + "=w1024-h768"
 
                 withContext(Dispatchers.Main) {
-                    Picasso.get().load(imageUrl).into(ivPhotoFrame)
+                    Picasso.get()
+                        .load(imageUrl)
+                        .transform(RotateIfPortraitTransformation())
+                        .into(ivPhotoFrame)
                 }
             }
         } catch (e: Exception) {
@@ -329,6 +362,41 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
+    private fun startPhotoUpdater(accessToken: String) {
+        handler.post(object : Runnable {
+            override fun run() {
+                CoroutineScope(Dispatchers.Main).launch {
+                    fetchPhotosWithAccessToken(accessToken)
+                }
+                handler.postDelayed(this, 10 * 60 * 1000L) // 10分後
+            }
+        })
+    }
+
+    // 縦画像は回転させる
+    class RotateIfPortraitTransformation : Transformation {
+        override fun transform(source: Bitmap): Bitmap {
+            val width = source.width
+            val height = source.height
+
+            // 画像の向きが縦かどうかをピクセル比で判断する
+            if (height > width) {
+                val matrix = Matrix().apply {
+                    postRotate(90f)
+                }
+                val rotated = Bitmap.createBitmap(source, 0, 0, width, height, matrix, true)
+                source.recycle()
+                return rotated
+            }
+
+            // 横向き or 正方形はそのまま
+            return source
+        }
+
+        override fun key(): String = "rotateIfPortrait"
+    }
+
 
 
 }

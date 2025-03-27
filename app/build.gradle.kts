@@ -1,6 +1,4 @@
 import java.util.Properties
-import com.android.build.api.dsl.ApplicationBuildType
-import org.gradle.api.Action
 
 plugins {
     alias(libs.plugins.android.application)
@@ -41,28 +39,34 @@ android {
         versionName = "1.0"
     }
 
-    buildTypes {
-        named("release", Action<ApplicationBuildType> {
-            isMinifyEnabled = false
-            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getReleaseProperty("GOOGLE_CLIENT_ID")}\"")
-            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getReleaseProperty("GOOGLE_CLIENT_SECRET")}\"")
-        })
 
-        named("debug", Action<ApplicationBuildType> {
-            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getLocalProperty("GOOGLE_CLIENT_ID")}\"")
-            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getLocalProperty("GOOGLE_CLIENT_SECRET")}\"")
-        })
+    signingConfigs {
+        create("release") {
+            storeFile = file(getReleaseProperty("STORE_FILE"))
+            storePassword = getReleaseProperty("STORE_PASSWORD")
+            keyAlias = getReleaseProperty("KEY_ALIAS")
+            keyPassword = getReleaseProperty("KEY_PASSWORD")
+        }
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getReleaseProperty("GOOGLE_CLIENT_ID")}\"")
+            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getReleaseProperty("GOOGLE_CLIENT_SECRET")}\"")
+        }
+
+        getByName("debug") {
+            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getLocalProperty("GOOGLE_CLIENT_ID")}\"")
+            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getLocalProperty("GOOGLE_CLIENT_SECRET")}\"")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

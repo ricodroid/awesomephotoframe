@@ -21,4 +21,9 @@
         android:id="@+id/action_show_user"
         android:title="User Info"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_upgrade"
+        android:title="Remove ads (paid)"
+        app:showAsAction="never" />
 </menu>

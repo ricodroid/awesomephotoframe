@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.PopupMenu
@@ -104,6 +105,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        findViewById<Button>(R.id.btn_remove_ads).setOnClickListener {
+            launchPurchaseFlow(this)
+        }
 
         updateDateTime() // 初期表示
         startClockUpdater() // 毎分更新（必要なら）
@@ -163,6 +167,9 @@ class MainActivity : AppCompatActivity() {
             R.id.action_show_user -> {
                 showUserInfoDialog()
                 true
+            }
+            R.id.action_upgrade -> {
+                launchPurchaseFlow(this); true
             }
             else -> super.onOptionsItemSelected(item)
         }
@@ -410,11 +417,13 @@ class MainActivity : AppCompatActivity() {
     private fun showPremiumUI() {
         // 広告非表示 + 有料機能を有効に
         findViewById<View>(R.id.adView)?.visibility = View.GONE
+        findViewById<View>(R.id.ad_container)?.visibility = View.GONE
     }
 
     private fun showFreeUI() {
         // 広告表示
         findViewById<View>(R.id.adView)?.visibility = View.VISIBLE
+        findViewById<View>(R.id.ad_container)?.visibility = View.VISIBLE
     }
 
     fun checkPremiumStatus(context: Context, onResult: (Boolean) -> Unit) {
@@ -457,7 +466,7 @@ class MainActivity : AppCompatActivity() {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     val productDetailsParams = QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId("premium_upgrade")
+                        .setProductId("premium_upgrade")// TODO
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
 

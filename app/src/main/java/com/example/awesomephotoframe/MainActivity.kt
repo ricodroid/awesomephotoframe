@@ -375,29 +375,4 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    // 縦画像は回転させる
-    class RotateIfPortraitTransformation : Transformation {
-        override fun transform(source: Bitmap): Bitmap {
-            val width = source.width
-            val height = source.height
-
-            // 画像の向きが縦かどうかをピクセル比で判断する
-            if (height > width) {
-                val matrix = Matrix().apply {
-                    postRotate(90f)
-                }
-                val rotated = Bitmap.createBitmap(source, 0, 0, width, height, matrix, true)
-                source.recycle()
-                return rotated
-            }
-
-            // 横向き or 正方形はそのまま
-            return source
-        }
-
-        override fun key(): String = "rotateIfPortrait"
-    }
-
-
-
 }

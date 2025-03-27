@@ -19,14 +19,9 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.AwesomePhotoFrame">
-        <!--        テスト用-->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713"/>
-
-        <meta-data
-            android:name="com.google.android.gms.auth.api.signin.CLIENT_ID"
-            android:value="@string/default_web_client_id"/>
 
         <activity
             android:name=".MainActivity"

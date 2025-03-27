@@ -1,7 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+fun getLocalProperty(key: String): String {
+    val properties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        properties.load(localPropertiesFile.inputStream())
+    }
+    return properties.getProperty(key) ?: throw IllegalArgumentException("Property $key not found")
 }
 
 android {
@@ -15,6 +26,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getLocalProperty("GOOGLE_CLIENT_ID")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getLocalProperty("GOOGLE_CLIENT_SECRET")}\"")
     }
 
     buildTypes {
@@ -35,7 +48,15 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+    packagingOptions {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/INDEX.LIST"
+        }
+    }
+
 }
 
 dependencies {
@@ -69,4 +90,15 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:24.1.0")
     implementation("com.squareup.picasso:picasso:2.8")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+
+    implementation ("com.google.api-client:google-api-client-android:1.33.2")
+    implementation ("com.google.http-client:google-http-client-gson:1.43.3")
+    implementation ("com.google.auth:google-auth-library-oauth2-http:1.20.0")
+    implementation ("androidx.activity:activity-ktx:1.7.2")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
+    implementation ("com.squareup.picasso:picasso:2.8")
+
+    implementation ("com.google.photos.library:google-photos-library-client:1.7.3")
+    implementation("com.google.api-client:google-api-client-android:1.35.2")
 }

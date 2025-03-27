@@ -6,18 +6,26 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
-import com.example.awesomephotoframe.viewmodel.WeatherViewModel
+import com.example.awesomephotoframe.data.repository.GooglePhotosApi
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import com.squareup.picasso.Picasso
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
     companion object {
@@ -25,50 +33,50 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         private const val RC_SIGN_IN = 9001
     }
 
-    private val weatherViewModel: WeatherViewModel by viewModels()
-    private lateinit var tvWeather: TextView
     private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var ivPhotoFrame: ImageView
     private lateinit var tvUser: TextView
-    private lateinit var tvTime: TextView
-    private lateinit var ivPhoto: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        tvWeather = findViewById(R.id.tv_weather)
+        ivPhotoFrame = findViewById(R.id.iv_photo_frame)
         tvUser = findViewById(R.id.tv_user)
-        tvTime = findViewById(R.id.tv_time)
-        ivPhoto = findViewById(R.id.iv_photo)
 
         findViewById<View>(R.id.sign_in_button).setOnClickListener(this)
         findViewById<View>(R.id.sign_out_button).setOnClickListener(this)
 
-        // Google Sign-Inの設定
+        // Google Sign-In 設定
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestScopes(Scope("https://www.googleapis.com/auth/photoslibrary.readonly"))
+            .requestServerAuthCode(BuildConfig.GOOGLE_CLIENT_ID, false)
             .build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // 既存のログイン状態を確認
+        // ログイン状態確認
         val account = GoogleSignIn.getLastSignedInAccount(this)
         updateUI(account)
-
-        // 天気情報をロード
-        weatherViewModel.loadWeather(35.6895, 139.6917)
-
-        // LiveData を監視 (observe)
-        weatherViewModel.weather.observe(this, Observer { weather ->
-            weather?.let {
-                tvWeather.text = "${it.temperature}°C, ${it.description}"
-            }
-        })
     }
 
     private fun signIn() {
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, RC_SIGN_IN)
+    }
+
+    private fun signOut() {
+        googleSignInClient.signOut().addOnCompleteListener {
+            updateUI(null)
+        }
+    }
+
+    override fun onClick(v: View) {
+        when (v.id) {
+            R.id.sign_in_button -> signIn()
+            R.id.sign_out_button -> signOut()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -84,42 +92,96 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             val account = completedTask.getResult(ApiException::class.java)
             Log.d(TAG, "Sign-in successful: ${account.email}")
             updateUI(account)
+
+            val authCode = account.serverAuthCode
+            if (authCode != null) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    val accessToken = exchangeAuthCodeForAccessToken(
+                        authCode,
+                        BuildConfig.GOOGLE_CLIENT_ID,
+                        BuildConfig.GOOGLE_CLIENT_SECRET
+                    )
+
+                    if (accessToken != null) {
+                        fetchPhotosWithAccessToken(accessToken)
+                    }
+                }
+            }
+
         } catch (e: ApiException) {
             Log.w(TAG, "Sign-in failed", e)
             updateUI(null)
         }
     }
 
-    private fun signOut() {
-        googleSignInClient.signOut().addOnCompleteListener {
-            updateUI(null)
-        }
-    }
 
     private fun updateUI(account: GoogleSignInAccount?) {
         if (account != null) {
             tvUser.text = "Welcome, ${account.displayName}"
-            account.photoUrl?.let { uri ->
-                Picasso.get()
-                    .load(uri)
-                    .placeholder(android.R.drawable.sym_def_app_icon)
-                    .error(android.R.drawable.sym_def_app_icon)
-                    .into(ivPhoto)
-            }
             findViewById<View>(R.id.sign_in_button).visibility = View.GONE
             findViewById<View>(R.id.sign_out_button).visibility = View.VISIBLE
         } else {
             tvUser.text = "Not signed in"
-            ivPhoto.setImageResource(android.R.drawable.sym_def_app_icon)
             findViewById<View>(R.id.sign_in_button).visibility = View.VISIBLE
             findViewById<View>(R.id.sign_out_button).visibility = View.GONE
         }
     }
 
-    override fun onClick(v: View) {
-        when (v.id) {
-            R.id.sign_in_button -> signIn()
-            R.id.sign_out_button -> signOut()
+    suspend fun exchangeAuthCodeForAccessToken(
+        authCode: String,
+        clientId: String,
+        clientSecret: String
+    ): String? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://oauth2.googleapis.com/token")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+
+            val postData = listOf(
+                "code" to authCode,
+                "client_id" to clientId,
+                "client_secret" to clientSecret,
+                "redirect_uri" to "",  // Androidでは空文字でOK
+                "grant_type" to "authorization_code"
+            ).joinToString("&") { "${it.first}=${URLEncoder.encode(it.second, "UTF-8")}" }
+
+            conn.outputStream.use { it.write(postData.toByteArray()) }
+
+            val response = conn.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(response)
+            return@withContext json.getString("access_token")
+        } catch (e: Exception) {
+            Log.e("TokenExchange", "Failed to get access token", e)
+            return@withContext null
         }
     }
+
+    fun createPhotosApi(): GooglePhotosApi {
+        return Retrofit.Builder()
+            .baseUrl("https://photoslibrary.googleapis.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GooglePhotosApi::class.java)
+    }
+
+
+    suspend fun fetchPhotosWithAccessToken(accessToken: String) {
+        try {
+            val api = createPhotosApi()
+            val response = api.listMediaItems("Bearer $accessToken")
+            val mediaItems = response.mediaItems
+            if (!mediaItems.isNullOrEmpty()) {
+                val imageUrl = mediaItems.random().baseUrl + "=w1024-h768"
+
+                withContext(Dispatchers.Main) {
+                    Picasso.get().load(imageUrl).into(ivPhotoFrame)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("PhotosAPI", "Failed to fetch photos", e)
+        }
+    }
+
 }

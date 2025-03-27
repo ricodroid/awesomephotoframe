@@ -1,4 +1,6 @@
 import java.util.Properties
+import com.android.build.api.dsl.ApplicationBuildType
+import org.gradle.api.Action
 
 plugins {
     alias(libs.plugins.android.application)
@@ -15,6 +17,18 @@ fun getLocalProperty(key: String): String {
     return properties.getProperty(key) ?: throw IllegalArgumentException("Property $key not found")
 }
 
+fun getReleaseProperty(key: String): String {
+    val properties = Properties()
+    val file = rootProject.file("release.properties")
+    if (file.exists()) {
+        properties.load(file.inputStream())
+    } else {
+        throw GradleException("Missing release.properties")
+    }
+    return properties.getProperty(key)
+}
+
+
 android {
     namespace = "com.example.awesomephotoframe"
     compileSdk = 35
@@ -25,9 +39,19 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+    }
 
-        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getLocalProperty("GOOGLE_CLIENT_ID")}\"")
-        buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getLocalProperty("GOOGLE_CLIENT_SECRET")}\"")
+    buildTypes {
+        named("release", Action<ApplicationBuildType> {
+            isMinifyEnabled = false
+            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getReleaseProperty("GOOGLE_CLIENT_ID")}\"")
+            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getReleaseProperty("GOOGLE_CLIENT_SECRET")}\"")
+        })
+
+        named("debug", Action<ApplicationBuildType> {
+            buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${getLocalProperty("GOOGLE_CLIENT_ID")}\"")
+            buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${getLocalProperty("GOOGLE_CLIENT_SECRET")}\"")
+        })
     }
 
     buildTypes {

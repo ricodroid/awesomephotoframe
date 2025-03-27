@@ -2,6 +2,8 @@ package com.example.awesomephotoframe
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -10,6 +12,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.awesomephotoframe.data.repository.GooglePhotosApi
@@ -31,6 +34,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -41,12 +48,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var ivPhotoFrame: ImageView
 //    private lateinit var tvUser: TextView
+    private lateinit var tvDate: TextView
+    private lateinit var tvTime: TextView
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastDateString: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         ivPhotoFrame = findViewById(R.id.iv_photo_frame)
+        tvDate = findViewById(R.id.tv_date)
+        tvTime = findViewById(R.id.tv_time)
+
 
         // Google Sign-In 設定
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -57,6 +71,9 @@ class MainActivity : AppCompatActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
+        updateDateTime() // 初期表示
+        startClockUpdater() // 毎分更新（必要なら）
+
         // ログイン状態確認
         val account = GoogleSignIn.getLastSignedInAccount(this)
         updateUI(account)
@@ -65,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         btnMenu.setOnClickListener { view ->
             showPopupMenu(view)
         }
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -92,16 +110,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun showUserInfoDialog() {
         val account = GoogleSignIn.getLastSignedInAccount(this)
-        val message = account?.let {
-            "Name: ${it.displayName}\nEmail: ${it.email}"
-        } ?: "Not signed in."
+        if (account != null) {
+            val imageUrl = account.photoUrl?.toString()
+            val dialogView = layoutInflater.inflate(R.layout.dialog_user_info, null)
 
-        AlertDialog.Builder(this)
-            .setTitle("User Info")
-            .setMessage(message)
-            .setPositiveButton("OK", null)
-            .show()
+            val ivUserIcon = dialogView.findViewById<ImageView>(R.id.iv_user_icon)
+            val tvName = dialogView.findViewById<TextView>(R.id.tv_user_name)
+            val tvEmail = dialogView.findViewById<TextView>(R.id.tv_user_email)
+
+            tvName.text = account.displayName
+            tvEmail.text = account.email
+
+            // PicassoやGlideで画像を読み込む
+            if (imageUrl != null) {
+                Picasso.get().load(imageUrl).into(ivUserIcon)
+            }
+
+            AlertDialog.Builder(this)
+                .setTitle("User Info")
+                .setView(dialogView)
+                .setPositiveButton("OK", null)
+                .show()
+        } else {
+            Toast.makeText(this, "Not signed in", Toast.LENGTH_SHORT).show()
+        }
     }
+
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         val account = GoogleSignIn.getLastSignedInAccount(this)
@@ -239,7 +273,7 @@ class MainActivity : AppCompatActivity() {
         // 🔽 ユーザー情報を表示専用のメニュー項目にセット
         val userItem = popup.menu.findItem(R.id.action_user_info)
         if (account != null) {
-            userItem.title = "👤 ${account.displayName}"
+            userItem.title = "${account.displayName}"
             userItem.isVisible = true
         } else {
             userItem.title = "Not signed in"
@@ -266,6 +300,34 @@ class MainActivity : AppCompatActivity() {
             }
         }
         popup.show()
+    }
+
+    private fun updateDateTime() {
+        val currentTime = Calendar.getInstance()
+
+        // 時刻の表示（例: 8:13 PM）
+        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+        val timeText = timeFormat.format(currentTime.time)
+        tvTime.text = timeText
+
+        // 日付の表示（例: Thu, Mar 28）
+        val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
+        val newDate = dateFormat.format(currentTime.time)
+
+        if (newDate != lastDateString) {
+            tvDate.text = newDate
+            lastDateString = newDate
+        }
+    }
+
+    private fun startClockUpdater() {
+        handler.post(object : Runnable {
+            override fun run() {
+                updateDateTime()
+                // 1分ごとに再実行（60,000ミリ秒）
+                handler.postDelayed(this, 60_000L)
+            }
+        })
     }
 
 

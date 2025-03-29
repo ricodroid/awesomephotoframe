@@ -3,8 +3,6 @@ package com.example.awesomephotoframe
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -49,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.bumptech.glide.Glide
+import com.example.awesomephotoframe.data.repository.MediaItem
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
@@ -321,22 +320,33 @@ class MainActivity : AppCompatActivity() {
     suspend fun fetchPhotosWithAccessToken(accessToken: String) {
         try {
             val api = createPhotosApi()
-            val response = api.listMediaItems("Bearer $accessToken")
-            val mediaItems = response.mediaItems
-            if (!mediaItems.isNullOrEmpty()) {
-                val imageUrl = mediaItems.random().baseUrl + "=w2048-h2048"
+            val allItems = mutableListOf<MediaItem>()
+            var pageToken: String? = null
+
+            do {
+                val response = api.listMediaItems("Bearer $accessToken", pageToken)
+                response.mediaItems?.let { allItems.addAll(it) }
+                pageToken = response.nextPageToken
+            } while (pageToken != null)
+
+            Log.d("PhotosAPI", "Total media items fetched: ${allItems.size}")
+
+            if (allItems.isNotEmpty()) {
+                val imageUrl = allItems.random().baseUrl + "=w2048-h2048"
 
                 withContext(Dispatchers.Main) {
                     Glide.with(this@MainActivity)
                         .load(imageUrl)
+                        .fitCenter()
                         .into(ivPhotoFrame)
                 }
-
             }
+
         } catch (e: Exception) {
             Log.e("PhotosAPI", "Failed to fetch photos", e)
         }
     }
+
 
 
     private fun showPopupMenu(anchor: View) {
@@ -412,6 +422,7 @@ class MainActivity : AppCompatActivity() {
                     fetchPhotosWithAccessToken(accessToken)
                 }
                 handler.postDelayed(this, 10 * 60 * 1000L) // 10分後
+//                handler.postDelayed(this, 3 * 1000L) // debug 3秒
             }
         })
     }
@@ -495,7 +506,5 @@ class MainActivity : AppCompatActivity() {
             override fun onBillingServiceDisconnected() {}
         })
     }
-
-
 
 }

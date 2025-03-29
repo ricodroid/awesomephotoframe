@@ -187,12 +187,14 @@ class MainActivity : AppCompatActivity() {
 
             tvName.text = account.displayName
             tvEmail.text = account.email
-
-            // PicassoやGlideで画像を読み込む
+            // ✅ Glideでアイコン画像を表示
             if (imageUrl != null) {
-                Glide.with(this@MainActivity)
+                Glide.with(this)
                     .load(imageUrl)
-                    .into(ivPhotoFrame)
+                    .placeholder(R.drawable.baseline_assignment_ind_24) // 読み込み中やnull用に適当なdrawable
+                    .error(R.drawable.baseline_assignment_ind_24) // 読み込み失敗用
+                    .circleCrop() // 丸くしたい場合
+                    .into(ivUserIcon)
             }
 
             AlertDialog.Builder(this)
@@ -386,7 +388,7 @@ class MainActivity : AppCompatActivity() {
         // 日付の表示（例: Thu, Mar 28）
         val dateFormat = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
         val newDate = dateFormat.format(currentTime.time)
-
+        Log.d("TimeCheck", "Formatted: $newDate $timeText")
         if (newDate != lastDateString) {
             tvDate.text = newDate
             lastDateString = newDate

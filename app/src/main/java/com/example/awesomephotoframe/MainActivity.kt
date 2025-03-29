@@ -322,7 +322,7 @@ class MainActivity : AppCompatActivity() {
             val response = api.listMediaItems("Bearer $accessToken")
             val mediaItems = response.mediaItems
             if (!mediaItems.isNullOrEmpty()) {
-                val imageUrl = mediaItems.random().baseUrl + "=w1024-h768"
+                val imageUrl = mediaItems.random().baseUrl + "=w2048-h2048"
 
                 withContext(Dispatchers.Main) {
                     Glide.with(this@MainActivity)
